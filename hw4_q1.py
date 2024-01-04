@@ -1,6 +1,12 @@
+import os
 from pyspark import SparkConf, SparkContext
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
+
+
+def map_by_movie(row):
+    dct = row.asDict()
+    return (dct['MovieID'], int(dct['Rating']))
 
 
 def ratings_fun(row):
@@ -17,10 +23,12 @@ if __name__ == '__main__':
         'spark://0.0.0.0:8080').setAppName('HW4_Q1')
     sc = SparkContext(conf=conf)
     spark = SparkSession(sc)
-    # UserID::MovieID::Rating::Timestamp
 
-    rating_rdd = spark.read.csv(filepath, sep=',', header=True)\
-        .rdd.flatMap(lambda x: ratings_fun(x))\
-        .reduceByKey(lambda x1, x2: x1+x2)\
-            .sortBy(lambda x: x[1], ascending=False)
-    print(rating_rdd.collect())
+    rating_rdd = spark.read.csv(filepath, sep=',', header=True).rdd\
+        .map(lambda row: map_by_movie(row))\
+        .mapValues(lambda row: (row, 1))\
+        .reduceByKey(lambda row1, row2: (row1[0] + row2[0], row1[1] + row2[1]))\
+        .mapValues(lambda row: row[0] / row[1])\
+        .sortBy(lambda row: row[1], ascending=False)\
+        .saveAsTextFile(
+            os.path.join('runs', 'q1'))

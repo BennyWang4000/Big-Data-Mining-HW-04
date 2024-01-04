@@ -3,6 +3,7 @@
 UserID, MovieID, Rating, Timestamp, Gender, Age, Occupation, Zip-code, Title, Genres
 '''
 
+import os
 from pyspark import SparkConf, SparkContext
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
@@ -57,7 +58,10 @@ if __name__ == '__main__':
     rating_rdd = spark.read.csv(filepath, sep=',', header=True).rdd\
         .map(lambda row: map_by_movie(row, dict(user_movie)))\
         .reduceByKey(lambda user1, user2: (user1[0] + user2[0], user1[1] + user2[1]))\
-        .mapValues(lambda user: cos_sim(user[0], user[1]))
+        .mapValues(lambda user: cos_sim(user[0], user[1]))\
+        .sortBy(lambda row: row[1], ascending=False)\
+        .saveAsTextFile(
+            os.path.join('runs', 'q4'))
 
-    print(rating_rdd.collect())
+
 # %%

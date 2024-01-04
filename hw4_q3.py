@@ -2,6 +2,7 @@
 UserID, MovieID, Rating, Timestamp, Gender, Age, Occupation, Zip-code, Title, Genres
 '''
 
+import os
 from pyspark import SparkConf, SparkContext
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
@@ -9,7 +10,7 @@ from pyspark.sql.functions import *
 
 def map_by_user(row):
     dct = row.asDict()
-    return (['UserID'], int(dct['Rating']))
+    return (dct['UserID'], int(dct['Rating']))
 
 
 def map_by_genre(row):
@@ -31,11 +32,15 @@ if __name__ == '__main__':
     # ---------------------------------------------------------------------------- #
     #                                     user                                     #
     # ---------------------------------------------------------------------------- #
+
     rating_rdd = spark.read.csv(filepath, sep=',', header=True).rdd\
         .map(lambda x: map_by_user(x))\
         .mapValues(lambda x: (x, 1))\
         .reduceByKey(lambda x1, x2: (x1[0] + x2[0], x1[1] + x2[1]))\
-        .mapValues(lambda x: x[0] / x[1])
+        .mapValues(lambda x: x[0] / x[1])\
+        .sortBy(lambda row: row[1], ascending=False)\
+        .saveAsTextFile(
+            os.path.join('runs', 'q3_user'))
 
     # ---------------------------------------------------------------------------- #
     #                                     genre                                    #
@@ -44,6 +49,7 @@ if __name__ == '__main__':
         .flatMap(lambda x: map_by_genre(x))\
         .mapValues(lambda x: (x, 1))\
         .reduceByKey(lambda x1, x2: (x1[0] + x2[0], x1[1] + x2[1]))\
-        .mapValues(lambda x: x[0] / x[1])
-
-    print(rating_rdd.collect())
+        .mapValues(lambda x: x[0] / x[1])\
+        .sortBy(lambda row: row[1], ascending=False)\
+        .saveAsTextFile(
+            os.path.join('runs', 'q3_genre'))

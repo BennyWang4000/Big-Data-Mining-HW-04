@@ -8,6 +8,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
 import math
 import argparse
+import os
 
 
 def map_by_user(row, rating_dct: Dict[str, int]):
@@ -57,7 +58,10 @@ if __name__ == '__main__':
     rating_rdd = spark.read.csv(filepath, sep=',', header=True).rdd\
         .map(lambda row: map_by_user(row, dict(movie_user)))\
         .reduceByKey(lambda movie1, movie2: (movie1[0] + movie2[0], movie1[1] + movie2[1]))\
-        .mapValues(lambda movie: cos_sim(movie[0], movie[1]))
+        .mapValues(lambda movie: cos_sim(movie[0], movie[1]))\
+        .sortBy(lambda row: row[1], ascending=False)\
+        .saveAsTextFile(
+            os.path.join('runs', 'q5'))
 
-    print(rating_rdd.collect())
+
 # %%

@@ -4,6 +4,8 @@ __pycache__/
 *$py.class
 New\ folder
 data
+runs
+
 # C extensions
 *.so
 
